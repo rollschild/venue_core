@@ -1,0 +1,22 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: cachix/install-nix-action@v31
+      # Package build + tests with GCC and with Clang, clang-tidy, formatting and lint.
+      - run: nix flake check -L
+      # The daily workflow (dev shell + presets) as a Debug build under
+      # AddressSanitizer + UBSan, warnings as errors.
+      - run: nix develop --command cmake --workflow --preset asan

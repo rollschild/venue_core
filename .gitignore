@@ -1,0 +1,17 @@
+# CMake (every preset configures into build/<preset>)
+build/
+CMakeUserPresets.json
+compile_commands.json
+
+# Nix
+result
+result-*
+.direnv/
+
+# Python
+__pycache__/
+.venv/
+.ruff_cache/
+
+# Editor / tool caches
+.cache/

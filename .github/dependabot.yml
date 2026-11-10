@@ -1,0 +1,15 @@
+# Monthly pull requests that bump the flake inputs (flake.lock) and the GitHub
+# Actions used by CI. CI then builds and tests each bump.
+version: 2
+updates:
+  - package-ecosystem: nix
+    directory: /
+    schedule:
+      interval: monthly
+    groups:
+      flake-inputs:
+        patterns: ["*"]
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly

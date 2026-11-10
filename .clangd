@@ -1,0 +1,5 @@
+# Point clangd at the `dev` preset's compile database; no symlink needed.
+CompileFlags:
+  CompilationDatabase: build/dev
+Diagnostics:
+  UnusedIncludes: Strict
