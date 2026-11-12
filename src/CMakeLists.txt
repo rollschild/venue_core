@@ -3,11 +3,13 @@ add_library(venue_core::venue_core ALIAS venue_core_lib)
 
 target_sources(
     venue_core_lib
-    PRIVATE venue_core.cpp
+    PRIVATE types.cpp
     PUBLIC
         FILE_SET HEADERS
             BASE_DIRS "${PROJECT_SOURCE_DIR}/include"
-            FILES "${PROJECT_SOURCE_DIR}/include/venue_core/venue_core.hpp"
+            FILES
+                "${PROJECT_SOURCE_DIR}/include/venue_core/types.hpp"
+                "${PROJECT_SOURCE_DIR}/include/venue_core/messages.hpp"
 )
 
 target_compile_features(venue_core_lib PUBLIC cxx_std_23)
