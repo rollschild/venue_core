@@ -1,9 +1,13 @@
 #include <array>
+#include <catch2/catch_message.hpp>
 #include <catch2/catch_test_macros.hpp>
+#include <compare>
 #include <concepts>
+#include <cstdint>
 #include <limits>
 #include <string_view>
 #include <type_traits>
+#include <unordered_map>
 #include <utility>
 #include <venue_core/types.hpp>
 
