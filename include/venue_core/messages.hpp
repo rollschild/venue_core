@@ -1,6 +1,7 @@
 #ifndef VENUE_CORE_MESSAGES_HPP
 #define VENUE_CORE_MESSAGES_HPP
 
+#include <cstdint>
 #include <span>
 #include <variant>
 #include <venue_core/types.hpp>

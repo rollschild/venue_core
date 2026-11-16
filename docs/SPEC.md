@@ -62,6 +62,7 @@ Every command also carries `command_sequence`.
 | Replace     | 7   | `tif` = IOC and the venue is in the pre-open auction                  | `ioc_in_auction`                    |
 | Uncross     | 1   | `command_sequence` ≤ the last command sequence                        | `non_monotonic_command_sequence`    |
 | Uncross     | 2   | the venue is not in the pre-open auction                              | `not_in_auction`                    |
+| Uncross     | 3   | `reference_price` outside `[min_price, max_price]`                    | `invalid_price`                     |
 
 ## 4. Events
 
@@ -97,7 +98,7 @@ Every command also carries `command_sequence`.
 | `OrderCanceled` | `order_id`, `canceled_quantity`                     | Part of a resting order was removed               |
 | `OrderDeleted`  | `order_id`                                          | All of a resting order was removed                |
 | `OrderReplaced` | `old_order_id`, `new_order_id`, `price`, `quantity` | A resting order was replaced                      |
-| `Trade`         | `match_id`, `price`, `quantity`, `aggressor` side   | A print of a fill. OPEN: exact use decided in Ph2 |
+| `Trade`         | `match_id`, `price`, `quantity`, `aggressor` side   | A print of each continuous fill (§6.2)            |
 | `Cross`         | `price`, `quantity`                                 | The auction result (Ph8)                          |
 
 ## 5. Decisions on edge cases
@@ -117,11 +118,81 @@ Every command also carries `command_sequence`.
 | Replace to a total ≤ the filled quantity                | Reject `replacement_below_filled_quantity`                                                          | §3 Replace #6                        |
 | IOC before the open                                     | Reject `ioc_in_auction`                                                                             | §3 Submit #5, Replace #7             |
 | Uncross during continuous trading                       | Reject `not_in_auction`                                                                             | §3 Uncross #2                        |
+| Uncross with a reference price outside the collar       | Reject `invalid_price`                                                                              | §3 Uncross #3                        |
 | Two faults in one command                               | The reason of the first check that fails, in §3 order (bad price + quantity 0 → `invalid_price`)    | §3 header                            |
 | Rejected command with an in-order sequence              | `last_command_sequence` advances                                                                    | D1                                   |
 | Resend of a command already processed                   | Reject `non_monotonic_command_sequence`; nothing else changes                                       | D1, §3 #1                            |
 | Taker filled completely on arrival                      | No public event for the taker; only executions of the orders it hit                                 | D2, §4                               |
 
-## 6. Later (leave empty today)
+## 6. Continuous trading: matching and event sequences
 
-Matching rules and event sequences (Ph2–Ph3) · reduce and replace (Ph4) · auction (Ph8) · snapshot (Ph10)
+Terms: the **taker** is the incoming order. A **maker** is a resting order that the taker trades with.
+`PRV` is the private channel. `PUB` is the public channel.
+
+### 6.1 Matching rules
+
+- A buy can trade with an ask at a price ≤ its limit. A sell can trade with a bid at a price ≥ its limit.
+- Price priority: the taker trades with the best price first (lowest ask, highest bid).
+- Time priority: at one price, the order that rested first trades first. Priority comes from a logical sequence, not a clock.
+- A fill is one taker against one maker. The fill quantity is the smaller of the two leaves.
+- A fill executes at the maker's price. A taker with a better limit gets this price (price improvement).
+- Each fill gets the next `match_id`. The first fill of the session has `match_id` 1.
+- The taker continues with the next maker until its leaves are 0, or until no maker price is inside its limit.
+- A maker with leaves 0 leaves the book. A price level with no orders leaves the book.
+- Taker remainder: a GTC order rests at its limit price, at the back of that price's queue. The venue cancels an IOC remainder.
+- An order gets a new priority each time it rests: on a submit and on a replace. A reduce keeps the priority.
+- After each command, the book is not crossed: the best bid is below the best ask.
+
+### 6.2 Events for each command
+
+Each command makes its events in the order below, with consecutive venue sequences.
+
+**Any reject:** one `PRV` reject event with the reason (§3). The command makes no other event.
+
+**`SubmitLimit`, accepted:**
+
+1. `PRV OrderAccepted`: `order_id`, `side`, `price` = limit price, `quantity`, `tif`. This event comes before all fills.
+2. For each fill, in priority order, one **fill group** of four events. All four have the same `match_id`:
+   1. `PRV OrderExecuted` for the maker: maker price, fill quantity, maker leaves after the fill, liquidity `Maker`.
+   2. `PRV OrderExecuted` for the taker: maker price, fill quantity, taker leaves after the fill, liquidity `Taker`.
+   3. `PUB OrderExecuted` for the maker: `order_id`, `match_id`, fill quantity.
+   4. `PUB Trade`: `match_id`, maker price, fill quantity, `aggressor` = the taker's side.
+3. Remainder, if the taker leaves are not 0:
+   - GTC: `PUB AddOrder` with `quantity` = taker leaves. There is no private event.
+   - IOC: `PRV OrderCanceled` with `canceled_quantity` = taker leaves and reason `IocRemainder`. There is no public event.
+
+**`Cancel`, accepted:**
+
+1. `PRV OrderCanceled`: `canceled_quantity` = the leaves, reason `User`.
+2. `PUB OrderDeleted`.
+
+**`Reduce`, accepted:** new leaves = `new_total_quantity` − filled. Removed = old leaves − new leaves.
+
+1. `PRV OrderReduced`: `new_total_quantity`, new leaves, `removed_quantity`.
+2. New leaves > 0: `PUB OrderCanceled` with `canceled_quantity` = removed. The order keeps its priority.
+3. New leaves = 0: `PUB OrderDeleted`. The order is done and leaves the book.
+
+**`Replace`, accepted:** the old order leaves the book first, so the new order cannot trade with it. The old ID is terminal.
+The new order keeps the side and the filled quantity of the old order. Its leaves = `new_total_quantity` − filled.
+
+1. `PRV OrderReplaced`: `old_order_id`, `new_order_id`, `price` = new price, `new_total_quantity`, leaves.
+2. The new order can trade with a resting order, or its `tif` is IOC:
+   - `PUB OrderDeleted` for the old ID.
+   - The new order is the taker. Apply `SubmitLimit` steps 2 and 3 to it.
+3. Else (GTC, and no resting order is inside its limit):
+   - `PUB OrderReplaced`: `old_order_id`, `new_order_id`, `price`, `quantity` = leaves.
+   - The new order rests at the back of its price's queue. There is no other event.
+
+### 6.3 Invariants
+
+The oracle and `audit()` check these after each command.
+
+- Each live order: total = filled + leaves, and leaves > 0.
+- Venue sequences are consecutive across both channels. `match_id` values are consecutive.
+- The four events of a fill group have the same `match_id` and fill quantity.
+- For each price level, the public quantity = the sum of the leaves of its live orders.
+- An ID that is filled, canceled or replaced is terminal. An accepted command never uses it again.
+
+## 7. Later (leave empty today)
+
+Auction (Ph8) · snapshot (Ph10)

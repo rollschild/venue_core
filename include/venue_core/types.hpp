@@ -14,7 +14,7 @@ struct Strong {
     Rep value{};
 
     Strong() = default;
-    // To stop brace elison.
+    // To stop brace elision.
     // Any user-declared constructor makes `Strong` a non-aggregate;
     // so no aggregate initialization and no brace elision
     constexpr explicit Strong(Rep v) noexcept : value{v} {}
@@ -37,7 +37,7 @@ struct PrioritySequenceTag;
 struct VenueSequenceTag;
 struct MatchIdTag;
 
-using Price = Strong<PriceTag, std::int64_t>;  // signed: tick diffs cna be neg
+using Price = Strong<PriceTag, std::int64_t>;  // signed: tick diffs can be neg
 using Quantity = Strong<QuantityTag, std::uint64_t>;
 using OrderId = Strong<OrderIdTag, std::uint64_t>;
 using CommandSequence = Strong<CommandSequenceTag, std::uint64_t>;
@@ -123,7 +123,7 @@ struct VenueConfig {
     bool start_in_auction{false};
     PagePolicy ladder_pages{PagePolicy::Normal};
 
-    // Cap on one order, so lkkkjevel totals cannot overflow 64 bits
+    // Cap on one order, so level totals cannot overflow 64 bits
     static constexpr std::uint64_t max_order_quantity_cap = std::uint64_t{1}
                                                             << 32U;
     static constexpr std::int64_t max_collar_width = std::int64_t{1} << 24U;

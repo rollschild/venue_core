@@ -2,6 +2,7 @@
 #include <catch2/catch_message.hpp>
 #include <catch2/catch_test_macros.hpp>
 #include <cstddef>
+#include <cstdint>
 #include <string_view>
 #include <type_traits>
 #include <utility>
@@ -45,24 +46,25 @@ static_assert(
     std::is_same_v<decltype(OrderReduced::removed_quantity), Quantity>);
 
 // A requires-expression outside a template is a hard error, so each check is a
-// concept. The positive control proves that the concepts can be true
-template <class T>
-concept TakesStrongValues =
-    requires { T{.limit_price = Price{5}, .quantity = Quantity{7}}; };
+// concept. Each concept has one expression, and only the value type changes.
+// The positive check proves that the expression is valid. Then a negative
+// check can fail only because of its value type.
+// The raw types are the exact Rep types: a narrowing conversion would make the
+// negative checks pass for the wrong reason.
+template <class Value>
+concept TakesAsLimitPrice =
+    requires(Value value) { SubmitLimit{.limit_price = value}; };
 
-template <class T>
-concept TakesQuantityAsPrice = requires { T{.limit_price = Quantity{5}}; };
+template <class First, class Second>
+concept TakesAsFirstTwo =
+    requires(First first, Second second) { SubmitLimit{first, second}; };
 
-template <class T>
-concept TakesPositionalInts = requires { T{1, 2}; };
+static_assert(TakesAsLimitPrice<Price>);
+static_assert(!TakesAsLimitPrice<Quantity>);
+static_assert(!TakesAsLimitPrice<std::int64_t>);
 
-template <class T>
-concept TakesIntAsPrice = requires { T{.limit_price = 5}; };
-
-static_assert(TakesStrongValues<SubmitLimit>);
-static_assert(!TakesQuantityAsPrice<SubmitLimit>);
-static_assert(!TakesPositionalInts<SubmitLimit>);
-static_assert(!TakesIntAsPrice<SubmitLimit>);
+static_assert(TakesAsFirstTwo<CommandSequence, OrderId>);
+static_assert(!TakesAsFirstTwo<std::uint64_t, std::uint64_t>);
 
 }  // namespace
 
