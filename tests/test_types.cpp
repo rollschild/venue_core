@@ -68,19 +68,19 @@ static_assert(std::same_as<decltype(Quantity{} - Quantity{}), Quantity>);
 
 static_assert((Quantity{7} + Quantity{5}).value == 12);
 static_assert((Quantity{7} - Quantity{5}).value == 2);
-static_assert(opposite(Side::BUY) == Side::SELL);
+static_assert(opposite(Side::Buy) == Side::Sell);
 static_assert(VenueConfig{}.valid());
 
 static_assert(noexcept(Quantity{1} + Quantity{1}));
 static_assert(noexcept(Quantity{1} - Quantity{1}));
-static_assert(noexcept(opposite(Side::BUY)));
+static_assert(noexcept(opposite(Side::Buy)));
 
 // `declval`: lets compiler inspect an expression without constructing an object
 // no object is created;
 // `valid()` is not executed;
 // the operand of `noexcept` is _unevaluated_ - only examined by compiler
 static_assert(noexcept(std::declval<const VenueConfig&>().valid()));
-static_assert(noexcept(to_string(RejectReason::INVALID_PRICE)));
+static_assert(noexcept(to_string(RejectReason::InvalidPrice)));
 static_assert(noexcept(OrderIdHash{}(OrderId{1})));
 
 }  // namespace
@@ -145,8 +145,8 @@ TEST_CASE("types: quantity subtraction", "[types]") {
 }
 
 TEST_CASE("types: opposite switches sides", "[types]") {
-    CHECK(opposite(Side::BUY) == Side::SELL);
-    CHECK(opposite(Side::SELL) == Side::BUY);
+    CHECK(opposite(Side::Buy) == Side::Sell);
+    CHECK(opposite(Side::Sell) == Side::Buy);
 }
 
 TEST_CASE("types: valid price bands", "[types]") {
@@ -222,13 +222,13 @@ TEST_CASE("types: order quantity configuration bounds", "[types]") {
 
 TEST_CASE("types: supported configuration options", "[types]") {
     VenueConfig config;
-    config.id_policy = IdPolicy::STRICTLY_INCREASING;
+    config.id_policy = IdPolicy::StrictlyIncreasing;
     config.start_in_auction = true;
 
     for (const auto pages : std::array{
-             PagePolicy::NORMAL,
-             PagePolicy::TRANSPARENT,
-             PagePolicy::EXPLICIT_2M,
+             PagePolicy::Normal,
+             PagePolicy::Transparent,
+             PagePolicy::Explicit2M,
          }) {
         config.ladder_pages = pages;
         CHECK(config.valid());
@@ -238,47 +238,47 @@ TEST_CASE("types: supported configuration options", "[types]") {
 TEST_CASE("types: rejection strings match the contract", "[types]") {
     constexpr std::array cases{
         ReasonText{
-            RejectReason::NON_MONOTONIC_COMMAND_SEQUENCE,
+            RejectReason::NonMonotonicCommandSequence,
             "non_monotonic_command_sequence",
         },
         ReasonText{
-            RejectReason::DUPLICATE_ORDER_ID,
+            RejectReason::DuplicateOrderId,
             "duplicate_order_id",
         },
         ReasonText{
-            RejectReason::NON_INCREASING_ORDER_ID,
+            RejectReason::NonIncreasingOrderId,
             "non_increasing_order_id",
         },
         ReasonText{
-            RejectReason::UNKNOWN_OR_TERMINAL_ORDER_ID,
+            RejectReason::UnknownOrTerminalOrderId,
             "unknown_or_terminal_order_id",
         },
         ReasonText{
-            RejectReason::DUPLICATE_REPLACEMENT_ID,
+            RejectReason::DuplicateReplacementId,
             "duplicate_replacement_id",
         },
         ReasonText{
-            RejectReason::INVALID_PRICE,
+            RejectReason::InvalidPrice,
             "invalid_price",
         },
         ReasonText{
-            RejectReason::INVALID_QUANTITY,
+            RejectReason::InvalidQuantity,
             "invalid_quantity",
         },
         ReasonText{
-            RejectReason::INVALID_REDUCTION,
+            RejectReason::InvalidReduction,
             "invalid_reduction",
         },
         ReasonText{
-            RejectReason::REPLACEMENT_BELOW_FILLED_QUANTITY,
+            RejectReason::ReplacementBelowFilledQuantity,
             "replacement_below_filled_quantity",
         },
         ReasonText{
-            RejectReason::IOC_IN_AUCTION,
+            RejectReason::IocInAuction,
             "ioc_in_auction",
         },
         ReasonText{
-            RejectReason::NOT_IN_AUCTION,
+            RejectReason::NotInAuction,
             "not_in_auction",
         },
     };

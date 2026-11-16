@@ -4,27 +4,27 @@
 namespace venue_core {
 [[nodiscard]] std::string_view to_string(RejectReason reason) noexcept {
     switch (reason) {
-        case RejectReason::NON_MONOTONIC_COMMAND_SEQUENCE:
+        case RejectReason::NonMonotonicCommandSequence:
             return "non_monotonic_command_sequence";
-        case RejectReason::DUPLICATE_ORDER_ID:
+        case RejectReason::DuplicateOrderId:
             return "duplicate_order_id";
-        case RejectReason::NON_INCREASING_ORDER_ID:
+        case RejectReason::NonIncreasingOrderId:
             return "non_increasing_order_id";
-        case RejectReason::UNKNOWN_OR_TERMINAL_ORDER_ID:
+        case RejectReason::UnknownOrTerminalOrderId:
             return "unknown_or_terminal_order_id";
-        case RejectReason::DUPLICATE_REPLACEMENT_ID:
+        case RejectReason::DuplicateReplacementId:
             return "duplicate_replacement_id";
-        case RejectReason::INVALID_PRICE:
+        case RejectReason::InvalidPrice:
             return "invalid_price";
-        case RejectReason::INVALID_QUANTITY:
+        case RejectReason::InvalidQuantity:
             return "invalid_quantity";
-        case RejectReason::INVALID_REDUCTION:
+        case RejectReason::InvalidReduction:
             return "invalid_reduction";
-        case RejectReason::REPLACEMENT_BELOW_FILLED_QUANTITY:
+        case RejectReason::ReplacementBelowFilledQuantity:
             return "replacement_below_filled_quantity";
-        case RejectReason::IOC_IN_AUCTION:
+        case RejectReason::IocInAuction:
             return "ioc_in_auction";
-        case RejectReason::NOT_IN_AUCTION:
+        case RejectReason::NotInAuction:
             return "not_in_auction";
     }
 

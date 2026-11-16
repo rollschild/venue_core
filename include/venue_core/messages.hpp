@@ -1,5 +1,5 @@
-#ifndef MESSAGES_HPP
-#define MESSAGES_HPP
+#ifndef VENUE_CORE_MESSAGES_HPP
+#define VENUE_CORE_MESSAGES_HPP
 
 #include <span>
 #include <variant>
@@ -194,8 +194,8 @@ using VenueEvent =
                  PublicTrade, PublicCross>;
 
 enum class EventChannel : std::uint8_t {
-    PRIVATE_ORDER,
-    PUBLIC_MARKET,
+    PrivateOrder,
+    PublicMarket,
 };
 
 struct VenueEventEnvelope {
@@ -206,7 +206,7 @@ struct VenueEventEnvelope {
                            const VenueEventEnvelope&) = default;
 };
 
-enum class Disposition : std::uint8_t { ACCEPTED, REJECTED };
+enum class Disposition : std::uint8_t { Accepted, Rejected };
 
 struct ProcessResult {
     Disposition disposition{};
@@ -214,8 +214,8 @@ struct ProcessResult {
     // A view of the engine’s event buffer without owning it.
     // The engine owns this buffer. Valid until the next process() call.
     std::span<const VenueEventEnvelope> events;
-}
+};
 
 }  // namespace venue_core
 
-#endif  // !MESSAGES_HPP
+#endif  // !VENUE_CORE_MESSAGES_HPP

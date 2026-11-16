@@ -1,5 +1,5 @@
-#ifndef TYPES_HPP
-#define TYPES_HPP
+#ifndef VENUE_CORE_TYPES_HPP
+#define VENUE_CORE_TYPES_HPP
 
 #include <compare>
 #include <cstddef>
@@ -12,6 +12,12 @@ namespace venue_core {
 template <class Tag, class Rep>
 struct Strong {
     Rep value{};
+
+    Strong() = default;
+    // To stop brace elison.
+    // Any user-declared constructor makes `Strong` a non-aggregate;
+    // so no aggregate initialization and no brace elision
+    constexpr explicit Strong(Rep v) noexcept : value{v} {}
 
     // `<=>` supplies ordering and implicit equality
     // `std::strong_ordering::less`
@@ -26,7 +32,7 @@ struct Strong {
 struct PriceTag;
 struct QuantityTag;
 struct OrderIdTag;
-struct CommonSequenceTag;
+struct CommandSequenceTag;
 struct PrioritySequenceTag;
 struct VenueSequenceTag;
 struct MatchIdTag;
@@ -34,7 +40,7 @@ struct MatchIdTag;
 using Price = Strong<PriceTag, std::int64_t>;  // signed: tick diffs cna be neg
 using Quantity = Strong<QuantityTag, std::uint64_t>;
 using OrderId = Strong<OrderIdTag, std::uint64_t>;
-using CommandSequence = Strong<CommonSequenceTag, std::uint64_t>;
+using CommandSequence = Strong<CommandSequenceTag, std::uint64_t>;
 using PrioritySequence = Strong<PrioritySequenceTag, std::uint64_t>;
 using VenueSequence = Strong<VenueSequenceTag, std::uint64_t>;
 using MatchId = Strong<MatchIdTag, std::uint64_t>;
@@ -50,58 +56,58 @@ using MatchId = Strong<MatchIdTag, std::uint64_t>;
 }
 
 enum class Side : std::uint8_t {
-    BUY,
-    SELL,
+    Buy,
+    Sell,
 };
 enum class TimeInForce : std::uint8_t {
-    GTC,
-    IOC,
+    Gtc,
+    Ioc,
 };
 
 enum class Liquidity : std::uint8_t {
-    MAKER,
-    TAKER,
-    AUCTION,
+    Maker,
+    Taker,
+    Auction,
 };
 
 enum class CancelReason : std::uint8_t {
-    USER,
-    IOC_REMAINDER,
+    User,
+    IocRemainder,
 };
 
 enum class TradingPhase : std::uint8_t {
-    PRE_OPEN,
-    CONTINUOUS,
+    PreOpen,
+    Continuous,
 };
 
 enum class IdPolicy : std::uint8_t {
-    SESSION_UINQUE,
-    STRICTLY_INCREASING,
+    SessionUnique,
+    StrictlyIncreasing,
 };
 
 enum class PagePolicy : std::uint8_t {
-    NORMAL,
-    TRANSPARENT,
-    EXPLICIT_2M,
+    Normal,
+    Transparent,
+    Explicit2M,
 };
 
 enum class RejectReason : std::uint8_t {
-    NON_MONOTONIC_COMMAND_SEQUENCE,
-    DUPLICATE_ORDER_ID,
-    NON_INCREASING_ORDER_ID,
-    UNKNOWN_OR_TERMINAL_ORDER_ID,
-    DUPLICATE_REPLACEMENT_ID,
-    INVALID_PRICE,
-    INVALID_QUANTITY,
-    INVALID_REDUCTION,
-    REPLACEMENT_BELOW_FILLED_QUANTITY,
-    IOC_IN_AUCTION,
-    NOT_IN_AUCTION,
+    NonMonotonicCommandSequence,
+    DuplicateOrderId,
+    NonIncreasingOrderId,
+    UnknownOrTerminalOrderId,
+    DuplicateReplacementId,
+    InvalidPrice,
+    InvalidQuantity,
+    InvalidReduction,
+    ReplacementBelowFilledQuantity,
+    IocInAuction,
+    NotInAuction,
 };
 
 // Return the other side
 [[nodiscard]] constexpr Side opposite(Side s) noexcept {
-    return s == Side::BUY ? Side::SELL : Side::BUY;
+    return s == Side::Buy ? Side::Sell : Side::Buy;
 }
 
 [[nodiscard]] std::string_view to_string(RejectReason r) noexcept;
@@ -113,9 +119,9 @@ struct VenueConfig {
     Price max_price{4096};
     Quantity max_order_quantity{1'000'000'000};
     std::size_t expected_live_orders{std::size_t{1} << 16U};
-    IdPolicy id_policy{IdPolicy::SESSION_UINQUE};
+    IdPolicy id_policy{IdPolicy::SessionUnique};
     bool start_in_auction{false};
-    PagePolicy ladder_pages{PagePolicy::NORMAL};
+    PagePolicy ladder_pages{PagePolicy::Normal};
 
     // Cap on one order, so lkkkjevel totals cannot overflow 64 bits
     static constexpr std::uint64_t max_order_quantity_cap = std::uint64_t{1}
@@ -141,4 +147,4 @@ struct OrderIdHash {
 
 }  // namespace venue_core
 
-#endif  // !TYPES_HPP
+#endif  // !VENUE_CORE_TYPES_HPP
