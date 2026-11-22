@@ -93,12 +93,37 @@ Disposition Oracle::handle(const SubmitLimit& command) {
     return Disposition::Accepted;
 }
 
-Disposition Oracle::handle(const Cancel& /*command*/) {
-    // TODO: SPEC §3 Cancel checks #1 and #2. On a failure: PRV
-    // CancelRejected.
-    // TODO: PRV OrderCanceled, then PUB OrderDeleted (SPEC §6.2).
-    // TODO: remove the order from live_.
-    return Disposition::Rejected;
+Disposition Oracle::handle(const Cancel& command) {
+    if (!sequence_in_order(command.command_sequence)) {
+        emit(EventChannel::PrivateOrder,
+             CancelRejected{
+                 .command_sequence = command.command_sequence,
+                 .order_id = command.order_id,
+                 .reason = RejectReason::NonMonotonicCommandSequence});
+        return Disposition::Rejected;
+    }
+
+    last_command_sequence_ = command.command_sequence;
+
+    auto it = std::ranges::find_if(live_, [&command](const auto& live_order) {
+        return live_order.id == command.order_id;
+    });
+    if (it == live_.end()) {
+        emit(EventChannel::PrivateOrder,
+             CancelRejected{.command_sequence = command.command_sequence,
+                            .order_id = command.order_id,
+                            .reason = RejectReason::UnknownOrTerminalOrderId});
+        return Disposition::Rejected;
+    }
+    emit(EventChannel::PrivateOrder,
+         OrderCanceled{.order_id = command.order_id,
+                       .canceled_quantity = it->leaves,
+                       .reason = CancelReason::User});
+    emit(EventChannel::PublicMarket,
+         PublicOrderDeleted{.order_id = command.order_id});
+
+    live_.erase(it);
+    return Disposition::Accepted;
 }
 
 Disposition Oracle::handle(const Reduce& /*command*/) {
@@ -151,17 +176,45 @@ std::vector<Oracle::LiveOrder>::iterator Oracle::best_maker(Side /*taker_side*/,
     return live_.end();
 }
 
-// TODO(human): the remainder step of match(), and rest().
-void Oracle::match(LiveOrder /*taker*/, TimeInForce /*tif*/) {
-    // TODO: while the taker has leaves and best_maker() finds a maker:
-    //       one fill group (SPEC §6.2 SubmitLimit step 2). A maker with
-    //       leaves 0 leaves live_.
-    // TODO: the remainder (SPEC §6.2 SubmitLimit step 3).
+/**
+ * Trades the incoming order against the book, then disposes of what is left.
+ */
+void Oracle::match(LiveOrder taker, TimeInForce tif) {
+    // TODO (trace 3): while the taker has leaves and best_maker() finds a
+    //       maker: one fill group (SPEC §6.2 SubmitLimit step 2). A maker
+    //       with leaves 0 leaves live_.
+    if (taker.leaves > Quantity{0}) {
+        switch (tif) {
+            case venue_core::TimeInForce::Gtc:
+                rest(taker);
+                break;
+            case venue_core::TimeInForce::Ioc:
+                emit(EventChannel::PrivateOrder,
+                     OrderCanceled{.order_id = taker.id,
+                                   .canceled_quantity = taker.leaves,
+                                   .reason = CancelReason::IocRemainder});
+                break;
+        }
+    }
 }
 
-void Oracle::rest(LiveOrder /*order*/) {
-    // TODO: give the order the next priority, add it to live_, then
-    //       PUB AddOrder with quantity = leaves.
+/**
+ * The only way into the book:
+ *   1. assigns the priority, which is the order's place in the queue at its
+ * price;
+ *   2. adds the order to live_, so best_maker can find it from now on;
+ *   3. announces it on the public channel with leaves, not total.
+ */
+void Oracle::rest(LiveOrder order) {
+    order.priority = PrioritySequence{next_priority_};
+    ++next_priority_;
+    live_.push_back(order);
+    emit(EventChannel::PublicMarket, PublicAddOrder{
+                                         .order_id = order.id,
+                                         .side = order.side,
+                                         .price = order.price,
+                                         .quantity = order.leaves,
+                                     });
 }
 
 void Oracle::emit(EventChannel channel, const VenueEvent& payload) {

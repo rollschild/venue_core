@@ -140,4 +140,19 @@ TEST_CASE("oracle: a reject still uses its command sequence", "[oracle]") {
     CHECK(result.disposition == Disposition::Accepted);
     CHECK(check_events(result.events, expected) == -1);
     CHECK(oracle.live_orders() == 0);
+
+    // seq 8 again: the accepted Cancel moved the last command sequence to 8.
+    submit.command_sequence = CommandSequence{8};
+    submit.order_id = OrderId{4};
+    result = oracle.process(submit);
+    CHECK(result.disposition == Disposition::Rejected);
+    CHECK(check_events(
+              result.events,
+              std::vector{private_event(
+                  7, OrderRejected{
+                         .command_sequence = CommandSequence{8},
+                         .order_id = OrderId{4},
+                         .reason = RejectReason::NonMonotonicCommandSequence,
+                     })}) == -1);
+    CHECK(oracle.live_orders() == 0);
 }
