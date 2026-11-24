@@ -126,17 +126,23 @@ Disposition Oracle::handle(const Cancel& command) {
     return Disposition::Accepted;
 }
 
+// A stub. Remove the NOLINT line when the body uses the state.
+// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
 Disposition Oracle::handle(const Reduce& /*command*/) {
     // TODO (trace 2): SPEC §3 Reduce checks, then SPEC §6.2 Reduce.
     return Disposition::Rejected;
 }
 
+// A stub. Remove the NOLINT line when the body uses the state.
+// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
 Disposition Oracle::handle(const Replace& /*command*/) {
     // TODO (traces 2 and 4): SPEC §3 Replace checks, then SPEC §6.2
     // Replace.
     return Disposition::Rejected;
 }
 
+// A stub. Remove the NOLINT line when the body uses the state.
+// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
 Disposition Oracle::handle(const Uncross& /*command*/) {
     // TODO: SPEC §3 Uncross checks. The auction itself is Ph8.
     return Disposition::Rejected;
@@ -180,9 +186,9 @@ std::vector<Oracle::LiveOrder>::iterator Oracle::best_maker(Side /*taker_side*/,
  * Trades the incoming order against the book, then disposes of what is left.
  */
 void Oracle::match(LiveOrder taker, TimeInForce tif) {
-    // TODO (trace 3): while the taker has leaves and best_maker() finds a
-    //       maker: one fill group (SPEC §6.2 SubmitLimit step 2). A maker
-    //       with leaves 0 leaves live_.
+    // TODO (golden trace 1): while the taker has leaves and best_maker()
+    //       finds a maker: one fill group (SPEC §6.2 SubmitLimit
+    //       step 2). A maker with leaves 0 leaves live_.
     if (taker.leaves > Quantity{0}) {
         switch (tif) {
             case venue_core::TimeInForce::Gtc:
