@@ -174,21 +174,77 @@ bool Oracle::quantity_valid(Quantity quantity) const noexcept {
     return quantity >= Quantity{1} && quantity <= config_.max_order_quantity;
 }
 
-std::vector<Oracle::LiveOrder>::iterator Oracle::best_maker(Side /*taker_side*/,
-                                                            Price /*limit*/) {
-    // TODO: scan all of live_. Keep the best order that can trade (SPEC
-    // §6.1).
-    //       Return live_.end() if there is none.
-    return live_.end();
+std::vector<Oracle::LiveOrder>::iterator Oracle::best_maker(Side taker_side,
+                                                            Price limit) {
+    auto best_it = live_.end();
+    auto can_trade = [taker_side, limit](const LiveOrder& order) {
+        return (taker_side != order.side) and
+               ((taker_side == Side::Buy) ? (order.price <= limit)
+                                          : (order.price >= limit));
+    };
+    auto better = [taker_side](const LiveOrder& a, const LiveOrder& b) {
+        if (a.price != b.price) {
+            return (taker_side == Side::Sell) ? a.price > b.price
+                                              : a.price < b.price;
+        }
+        return a.priority < b.priority;
+    };
+    for (auto it = live_.begin(); it != live_.end(); ++it) {
+        if (!can_trade(*it)) {
+            continue;
+        }
+        if (best_it == live_.end() or better(*it, *best_it)) {
+            best_it = it;
+        }
+    }
+    return best_it;
 }
 
 /**
  * Trades the incoming order against the book, then disposes of what is left.
  */
 void Oracle::match(LiveOrder taker, TimeInForce tif) {
-    // TODO (golden trace 1): while the taker has leaves and best_maker()
-    //       finds a maker: one fill group (SPEC §6.2 SubmitLimit
-    //       step 2). A maker with leaves 0 leaves live_.
+    auto maker_it = live_.end();
+    while (taker.leaves > Quantity{0} and
+           (maker_it = best_maker(taker.side, taker.price)) != live_.end()) {
+        const Quantity q = std::min(taker.leaves, maker_it->leaves);
+        const Price p = maker_it->price;
+        const MatchId m_id = MatchId{next_match_id_++};
+        taker.filled = taker.filled + q;
+        taker.leaves = taker.leaves - q;
+        maker_it->leaves = maker_it->leaves - q;
+        maker_it->filled = maker_it->filled + q;
+
+        // First emit for the maker
+        emit(EventChannel::PrivateOrder,
+             OrderExecuted{.order_id = maker_it->id,
+                           .match_id = m_id,
+                           .price = p,
+                           .quantity = q,
+                           .leaves = maker_it->leaves,
+                           .liquidity = Liquidity::Maker});
+        emit(EventChannel::PrivateOrder,
+             OrderExecuted{.order_id = taker.id,
+                           .match_id = m_id,
+                           .price = p,
+                           .quantity = q,
+                           .leaves = taker.leaves,
+                           .liquidity = Liquidity::Taker});
+        emit(EventChannel::PublicMarket, PublicOrderExecuted{
+                                             .order_id = maker_it->id,
+                                             .match_id = m_id,
+                                             .quantity = q,
+                                         });
+        emit(EventChannel::PublicMarket, PublicTrade{.match_id = m_id,
+                                                     .price = p,
+                                                     .quantity = q,
+                                                     .aggressor = taker.side});
+
+        if (maker_it->leaves == Quantity{0}) {
+            live_.erase(maker_it);
+        }
+    }
+
     if (taker.leaves > Quantity{0}) {
         switch (tif) {
             case venue_core::TimeInForce::Gtc:

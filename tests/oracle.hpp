@@ -58,8 +58,7 @@ class Oracle {
     TradingPhase phase_{};
     CommandSequence last_command_sequence_;
     std::uint64_t next_venue_sequence_{1};
-    // Remove [[maybe_unused]] when the fill loop uses it.
-    [[maybe_unused]] std::uint64_t next_match_id_{1};
+    std::uint64_t next_match_id_{1};
     std::uint64_t next_priority_{1};
     std::vector<OrderId> used_ids_;  // policy SessionUnique
     OrderId highest_accepted_id_;    // policy StrictlyIncreasing
